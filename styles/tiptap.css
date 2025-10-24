@@ -1,35 +1,51 @@
 .ProseMirror {
-    min-height: 300px;
-    outline: none;
-  }
-  
-  .ProseMirror p {
-    margin: 0 0 0.6rem;
-  }
-  
-  .ProseMirror ul {
-    list-style-type: disc;
-    margin-left: 1.5rem;
-  }
-  
-  .ProseMirror ol {
-    list-style-type: decimal;
-    margin-left: 1.5rem;
-  }
-  
-  .ProseMirror strong {
-    font-weight: bold;
-  }
-  
-  .ProseMirror em {
-    font-style: italic;
-  }
-  
-  .ProseMirror h1,
-  .ProseMirror h2,
-  .ProseMirror h3 {
-    font-weight: 600;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-  }
-  
+  min-height: 150px;
+  padding: 0.75rem;
+  line-height: 1.6;
+  color: #111827;
+  outline: none;
+  white-space: pre-wrap;
+}
+
+.ProseMirror p {
+  margin: 0.5rem 0;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror strong {
+  font-weight: 600;
+}
+
+.ProseMirror em {
+  font-style: italic;
+}
+
+.ProseMirror blockquote {
+  border-left: 3px solid #e5e7eb;
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.ProseMirror a {
+  color: #2563eb;
+  text-decoration: underline;
+}

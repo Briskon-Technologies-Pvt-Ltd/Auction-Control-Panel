@@ -92,6 +92,9 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
           ? JSON.parse(auctionData.requireddocuments)
           : auctionData.requireddocuments ?? null,
 
+      detailed_sections: auctionData.detailed_sections ?? null,
+
+
       // System fields
       createdby: user?.id || "system",
       createdat: createdAt,
