@@ -100,7 +100,7 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
       currentbid: null, // 🆕 no default bid
       bidcount: 0,
       participants: [],
-      approved: false,
+      approved: true,
       ended: false,
       editable: true,
       approval_status: "pending",
