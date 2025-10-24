@@ -41,7 +41,8 @@ type Category = {
 /* ------------------ Upload Helper ------------------ */
 async function uploadFiles(files: FileList | null, folder: "images" | "documents") {
   if (!files || files.length === 0) return [];
-  const uploaded: { name: string; url: string }[] = [];
+  const uploaded: string[] = []; // <-- now stores URLs only
+
   for (const file of Array.from(files)) {
     const ext = file.name.split(".").pop() ?? "";
     const path = `public/${folder}/${uuidv4()}.${ext}`;
@@ -52,9 +53,10 @@ async function uploadFiles(files: FileList | null, folder: "images" | "documents
       continue;
     }
     const { data } = supabase.storage.from("auctions").getPublicUrl(path);
-    uploaded.push({ name: file.name, url: data.publicUrl });
+    uploaded.push(data.publicUrl); // <-- only push the URL
   }
-  return uploaded;
+
+  return uploaded; // returns string[]
 }
 
 /* ------------------ Component ------------------ */
@@ -191,6 +193,7 @@ export default function CreateAuctionPage() {
 
   return (
     <AdminLayout>
+      <Toaster position="top-right" /> 
       <div className="max-w-6xl py-1">
         <p className="text-xs font-semibold text-gray-500 tracking-wide mb-6 uppercase">
           Create Forward Auction
