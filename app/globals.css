@@ -1,0 +1,198 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+html, body {
+  font-family: 'Roboto', sans-serif !important;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.animate-confetti {
+  animation: confetti-fall linear forwards;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 201 94% 46%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 201 94% 46%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 201 94% 46%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+/* Remove the problematic border-border reference */
+@layer base {
+  * {
+    @apply border-neutral-200 dark:border-neutral-700;
+  }
+  body {
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+}
+
+/* Smooth transitions for all interactive elements */
+@layer utilities {
+  .transition-all-smooth {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  .transition-transform-smooth {
+    @apply transition-transform duration-300 ease-in-out;
+  }
+
+  .transition-colors-smooth {
+    @apply transition-colors duration-300 ease-in-out;
+  }
+
+  .transition-opacity-smooth {
+    @apply transition-opacity duration-300 ease-in-out;
+  }
+
+  .hover-scale {
+    @apply hover:scale-105 transition-transform duration-300 ease-in-out;
+  }
+
+  .active-scale {
+    @apply active:scale-95 transition-transform duration-150 ease-in-out;
+  }
+}
+
+/* Custom form styles */
+@layer components {
+  .form-input {
+    @apply w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm shadow-sm 
+    focus:border-corporate-600 focus:ring-2 focus:ring-corporate-600/20 
+    dark:bg-gray-800 dark:text-gray-100 dark:focus:border-corporate-500 dark:focus:ring-corporate-500/20
+    transition-all duration-200;
+  }
+    
+  .form-select {
+    @apply w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm shadow-sm 
+    focus:border-corporate-600 focus:ring-2 focus:ring-corporate-600/20 
+    dark:bg-gray-800 dark:text-gray-100 dark:focus:border-corporate-500 dark:focus:ring-corporate-500/20
+    transition-all duration-200;
+  }
+
+  .form-checkbox {
+    @apply rounded border-gray-300 dark:border-gray-600 text-corporate-600 dark:text-corporate-500 shadow-sm 
+    focus:border-corporate-600 focus:ring-2 focus:ring-corporate-600/20 
+    dark:focus:border-corporate-500 dark:focus:ring-corporate-500/20
+    transition-all duration-200;
+  }
+
+  .form-radio {
+    @apply border-gray-300 dark:border-gray-600 text-corporate-600 dark:text-corporate-500 shadow-sm 
+    focus:border-corporate-600 focus:ring-2 focus:ring-corporate-600/20 
+    dark:focus:border-corporate-500 dark:focus:ring-corporate-500/20
+    transition-all duration-200;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md font-medium transition-all duration-200 
+    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background
+    disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply btn bg-corporate-600 text-white hover:bg-corporate-700 focus:ring-corporate-600
+    dark:bg-corporate-500 dark:hover:bg-corporate-600 dark:focus:ring-corporate-400;
+  }
+
+  .btn-secondary {
+    @apply btn bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 
+    hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-corporate-600 dark:focus:ring-corporate-500;
+  }
+
+  .btn-danger {
+    @apply btn bg-destructive-600 text-white hover:bg-destructive-700 focus:ring-destructive-600
+    dark:bg-destructive-500 dark:hover:bg-destructive-600 dark:focus:ring-destructive-400;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+
+  .btn-md {
+    @apply px-4 py-2 text-sm;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+}
+
+/* Card and container styles */
+@layer components {
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 
+    overflow-hidden transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300;
+  }
+
+  .container-smooth {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
