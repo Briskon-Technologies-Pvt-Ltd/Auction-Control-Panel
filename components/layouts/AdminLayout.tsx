@@ -152,6 +152,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               active={pathname.startsWith("/admin-panel/sellers")}
               onClick={() => router.push("/admin-panel/sellers")}
             />
+               <SidebarItem
+              icon={BarChart}
+              label="Analytics"
+              href="/admin-panel/analytics"
+              active={pathname.startsWith("/admin-panel/analytics")}
+              onClick={() => router.push("/admin-panel/analytics")}
+            />
        */}
             <SidebarItem
               icon={Calendar}
@@ -160,21 +167,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               active={pathname.startsWith("/admin-panel/calendar")}
               onClick={() => router.push("/admin-panel/calendar")}
             />
-            <SidebarItem
-              icon={BarChart}
-              label="Analytics"
-              href="/admin-panel/analytics"
-              active={pathname.startsWith("/admin-panel/analytics")}
-              onClick={() => router.push("/admin-panel/analytics")}
-            />
          
-            <SidebarItem
-              icon={FolderTree}
-              label="EDITOR"
-              href="/admin-panel/sections-editor"
-              active={pathname.startsWith("/admin-panel/sections-editor")}
-              onClick={() => router.push("/admin-panel/sections-editor")}
-            />
           </nav>
         </aside>
 

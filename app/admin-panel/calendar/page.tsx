@@ -107,8 +107,19 @@ export default function AuctionCalendarPage() {
     viewMode === "week"
       ? Math.floor((today.getDate() + firstDayOfMonth - 1) / 7) * 7
       : 0;
-  const totalDays = viewMode === "week" ? 7 : daysInMonth;
-  const gridDays = Array.from({ length: totalDays }, (_, i) => i + startIndex + 1);
+ // Calculate total number of calendar slots (including leading blanks)
+const totalCells =
+viewMode === "week"
+  ? 7
+  : Math.ceil((daysInMonth + firstDayOfMonth) / 7) * 7;
+
+// Generate full calendar grid with leading blanks
+
+const gridDays = Array.from({ length: totalCells }, (_, i) => {
+const day = i - firstDayOfMonth + 1;
+return day > 0 && day <= daysInMonth ? day : null; // null = blank cell
+});
+
 
   if (loading)
     return (
@@ -180,127 +191,141 @@ export default function AuctionCalendarPage() {
           }`}
         >
           {gridDays.map((day, idx) => {
-            const date = new Date(year, month, day);
-            if (day < 1 || day > daysInMonth) return <div key={idx}></div>;
-            const isToday =
-              date.getDate() === today.getDate() &&
-              date.getMonth() === today.getMonth() &&
-              date.getFullYear() === today.getFullYear();
-            const dayAuctions = getAuctionsForDate(date);
-            return (
-              <div
-                key={idx}
-                className={`border border-gray-200 rounded-lg p-1 bg-white hover:shadow-sm flex flex-col cursor-pointer ${
-                  isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""
-                }`}
-                onClick={() => {
-                  setSelectedDate(date);
-                  setModalAuctions(dayAuctions);
-                }}
-              >
-                <div className="text-[11px] font-semibold text-gray-600 mb-1">
-                  {day}
+        // Render an empty cell for padding (leading/trailing blanks)
+        if (!day) {
+          return <div key={`blank-${idx}`} />;
+        }
+
+        const date = new Date(year, month, day);
+        const isToday =
+          date.getDate() === today.getDate() &&
+          date.getMonth() === today.getMonth() &&
+          date.getFullYear() === today.getFullYear();
+
+        const dayAuctions = getAuctionsForDate(date);
+
+        return (
+          <div
+            key={`cell-${idx}-${day}`}
+            
+            className={`border border-gray-200 rounded-lg p-1 flex flex-col cursor-pointer transition
+              ${isToday ? "bg-yellow-200 ring-2 ring-blue-400 ring-offset-1" : "bg-white hover:shadow-sm"}
+            `}
+            
+
+            onClick={() => {
+              setSelectedDate(date);
+              setModalAuctions(dayAuctions);
+            }}
+          >
+            <div className="text-[11px] font-semibold text-gray-600 mb-1">
+              {day}
+            </div>
+
+            <div className="flex flex-col gap-[2px] overflow-y-auto flex-1">
+              {dayAuctions.length === 0 ? (
+                <div className="text-[10px] text-gray-400 italic text-center pt-2">
+                  —
                 </div>
-                <div className="flex flex-col gap-[2px] overflow-y-auto flex-1">
-                  {dayAuctions.length === 0 ? (
-                    <div className="text-[10px] text-gray-400 italic text-center pt-2">
-                      —
-                    </div>
-                  ) : (
-                    dayAuctions.slice(0, 3).map((a, i) => (
-                      <TooltipProvider key={i}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div
-                              className={`flex items-center justify-between h-4 px-2 rounded-full ${pastelColor(
-                                a.auctionstatus
-                              )} text-[10px]`}
-                            >
-                              <div className="flex items-center gap-1 truncate w-full">
-                                {a.auctiontype === "forward" ? (
-                                  <ArrowUp className="w-3 h-3 text-green-600" />
-                                ) : (
-                                  <ArrowDown className="w-3 h-3 text-red-500" />
-                                )}
-                                <span className="truncate">{a.auctionname}</span>
-                                {(a.auctionstatus === "Live" ||
-                                  a.auctionstatus === "Closed") && (
-                                  <span className="ml-auto w-3.5 h-3.5 flex items-center justify-center rounded-full bg-white text-gray-800 font-semibold text-[8px]">
-                                    {a.bidcount}
-                                  </span>
-                                )}
+              ) : (
+                dayAuctions.slice(0, 3).map((a, i) => (
+                  <TooltipProvider key={`tp-${idx}-${i}`}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={`flex items-center justify-between h-4 px-2 rounded-full ${pastelColor(
+                            a.auctionstatus
+                          )} text-[10px]`}
+                        >
+                          <div className="flex items-center gap-1 truncate w-full">
+                            {a.auctiontype === "forward" ? (
+                              <ArrowUp className="w-3 h-3 text-green-600" />
+                            ) : (
+                              <ArrowDown className="w-3 h-3 text-red-500" />
+                            )}
+                            <span className="truncate">{a.auctionname}</span>
+                            {(a.auctionstatus === "Live" ||
+                              a.auctionstatus === "Closed") && (
+                              <span className="ml-auto w-3.5 h-3.5 flex items-center justify-center rounded-full bg-white text-gray-800 font-semibold text-[8px]">
+                                {a.bidcount}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </TooltipTrigger>
+
+                      <TooltipContent className="bg-blue-200 border border-blue-800 rounded-md p-3 shadow-md max-w-xs">
+                        <div className="flex flex-col gap-1 text-[12px] text-gray-900 leading-snug">
+                          <div className="font-semibold text-sm text-gray-900 border-b border-blue-400 pb-1">
+                            Auction name:{" "}
+                            <span className="font-bold text-gray-800">{a.auctionname}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="font-medium">Auction type:</span>
+                            {a.auctiontype === "forward" ? (
+                              <ArrowUp className="w-3.5 h-3.5 text-green-600" />
+                            ) : (
+                              <ArrowDown className="w-3.5 h-3.5 text-red-500" />
+                            )}
+                            <span className="capitalize">{a.auctiontype}</span>
+                          </div>
+
+                          <div className="flex justify-between mt-1">
+                            <div>
+                              <span className="font-medium">Start date:</span>
+                              <div className="text-[11px] text-gray-800">
+                                {new Date(a.startdate).toLocaleDateString("en-GB", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "2-digit",
+                                })}
                               </div>
                             </div>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-blue-200 border border-blue-800 rounded-md p-3 shadow-md max-w-xs">
-  <div className="flex flex-col gap-1 text-[12px] text-gray-900 leading-snug">
-    <div className="font-semibold text-sm text-gray-900 border-b border-blue-400 pb-1">
-      Auction name:{" "}
-      <span className="font-bold text-gray-800">{a.auctionname}</span>
-    </div>
+                            <div>
+                              <span className="font-medium">End date:</span>
+                              <div className="text-[11px] text-gray-800">
+                                {new Date(a.enddate).toLocaleDateString("en-GB", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "2-digit",
+                                })}
+                              </div>
+                            </div>
+                          </div>
 
-    <div className="flex items-center gap-1 mt-1">
-      <span className="font-medium">Auction type:</span>
-      {a.auctiontype === "forward" ? (
-        <ArrowUp className="w-3.5 h-3.5 text-green-600" />
-      ) : (
-        <ArrowDown className="w-3.5 h-3.5 text-red-500" />
-      )}
-      <span className="capitalize">{a.auctiontype}</span>
-    </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="font-medium">Bids placed:</span>
+                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-800 text-white text-[10px] font-semibold">
+                              {a.bidcount}
+                            </span>
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ))
+              )}
 
-    <div className="flex justify-between mt-1">
-      <div>
-        <span className="font-medium">Start date:</span>
-        <div className="text-[11px] text-gray-800">
-          {new Date(a.startdate).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "2-digit",
-          })}
-        </div>
-      </div>
-      <div>
-        <span className="font-medium">End date:</span>
-        <div className="text-[11px] text-gray-800">
-          {new Date(a.enddate).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "2-digit",
-          })}
-        </div>
-      </div>
-    </div>
-
-    <div className="flex items-center gap-2 mt-2">
-      <span className="font-medium">Bids placed:</span>
-      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-800 text-white text-[10px] font-semibold">
-        {a.bidcount}
-      </span>
-    </div>
-  </div>
-</TooltipContent>
-
-                        </Tooltip>
-                      </TooltipProvider>
-                    ))
-                  )}
-                  {dayAuctions.length > 3 && (
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedDate(date);
-                        setModalAuctions(dayAuctions);
-                      }}
-                      className="text-[9px] text-blue-600 underline cursor-pointer text-right"
-                    >
-                     Click : +{dayAuctions.length - 3} more auctions
-                    </div>
-                  )}
+              {dayAuctions.length > 3 && (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedDate(date);
+                    setModalAuctions(dayAuctions);
+                  }}
+                  className="text-[9px] text-blue-600 underline cursor-pointer text-right"
+                >
+                  Click : +{dayAuctions.length - 3} more auctions
                 </div>
-              </div>
-            );
+              )}
+            </div>
+          </div>
+        );
           })}
+
+
+
         </div>
 
         {/* Legend */}

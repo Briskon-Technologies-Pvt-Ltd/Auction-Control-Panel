@@ -7,18 +7,11 @@ import AdminLayout from "@/components/layouts/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Listbox } from "@headlessui/react";
+import { supabase } from "@/lib/supabaseClient";
+import toast from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 
-import {
-  Users,
-  Building,
-  Gavel,
-  ShoppingCart,
-  Trophy,
-  FileText,
-  ChevronsUpDown,
-  Activity,
-  Radar,
-} from "lucide-react";
+import { Users,Building,Gavel,ShoppingCart,Trophy,FileText, ChevronsUpDown,Activity,Radar,} from "lucide-react";
 import { PieChart,AreaChart,Area ,Pie, ComposedChart,Cell,LineChart,LineProps,Line, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import Link from "next/link";
 import HoverProfileCard from "@/components/profile/HoverProfileCard";
@@ -73,7 +66,6 @@ export default function DashboardPage() {
     atRiskCount: 0,
   });
 ;
-
   useEffect(() => {
     if (!user || user.role !== "admin") {
       router.replace("/");
@@ -134,7 +126,6 @@ export default function DashboardPage() {
           grouped[b.auction_id].count++;
           grouped[b.auction_id].bids.push(b);
         }
-  
         /* ----------------- BUILD AUCTION STATS ----------------- */
         const stats = Object.values(grouped).map((g: any) => {
           const auction = auctions.find((a) => a.id === g.auctionId);
@@ -400,7 +391,6 @@ const forwardStatusData = [
   { name: "Pending", value: forwardPendingCount, color: "#F59E0B" },
 ];
 
-
 // ---------- Reverse Auction Status ----------
 const reversePendingCount = auctions.filter(
   (a) => !a.approved && String(a.auctiontype || "").toLowerCase() === "reverse"
@@ -429,7 +419,6 @@ const reverseStatusData = [
   { name: "Pending", value: reversePendingCount, color: "#F59E0B" },
 ];
 
-
   // Bidders / Sellers pending
   const biddersPendingCount = bidders.filter((b) => !b.isadminapproved).length;
   const sellersPendingCount = sellers.filter((s) => !s.isadminapproved).length;
@@ -442,19 +431,86 @@ const reverseStatusData = [
   for (const p of [...sellers, ...bidders]) {
     if (p?.id) profilesMap.set(p.id, p);
   }
+ 
+  //  Profiles Section Approvals
+const handleApproveProfile = async (id: string) => {
+  if (!confirm("Are you sure you want to approve this profile?")) return;
 
-  /* ----------------- Page UI ----------------- */
-  // Roboto hint. Prefer adding into global head or css, but keeping for dev.
-  const robotoLink = (
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
-    />
-  );
+  const { error } = await supabase
+    .from("profiles")
+    .update({ isadminapproved: true, profile_status: 1 })
+    .eq("id", id);
 
-  return (
-    <AdminLayout>
-    {robotoLink}
+  if (error) {
+    console.error("Approval failed:", error.message);
+    toast.error("Failed to approve profile");
+  } else {
+    toast.success("Profile approved successfully");
+    setBidders((prev) => prev.filter((b) => b.id !== id));
+    setSellers((prev) => prev.filter((s) => s.id !== id));
+  }
+};
+
+const handleRejectProfile = async (id: string) => {
+  const reason = prompt("Enter reason for rejection:");
+  if (!reason) return;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ reject_reason: reason, profile_status: 5 })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Rejection failed:", error.message);
+    toast.error("Failed to reject profile");
+  } else {
+    toast.success("Profile rejected successfully");
+    setBidders((prev) => prev.filter((b) => b.id !== id));
+    setSellers((prev) => prev.filter((s) => s.id !== id));    
+  }
+};
+
+//  Auctions Approval
+const handleApproveAuction = async (id: string) => {
+  if (!confirm("Approve this auction?")) return;
+  const { error } = await supabase
+    .from("auctions")
+    .update({ approved: true })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Auction approval failed:", error.message);
+    toast.error("Failed to approve auction");
+  } else {
+    toast.success("Auction approved successfully");
+    setAuctions((prev) => prev.filter((a) => a.id !== id));    
+  }
+};
+
+const handleRejectAuction = async (id: string) => {
+  const reason = prompt("Enter reason for rejection:");
+  if (!reason) return;
+
+  const { error } = await supabase
+    .from("auctions")
+    .update({ reject_reason: reason })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Auction rejection failed:", error.message);
+    toast.error("Failed to reject auction");
+  } else {
+    toast.success("Auction rejected successfully");
+    setAuctions((prev) => prev.filter((a) => a.id !== id));
+  }
+};
+;
+return (
+  
+<AdminLayout>    
+
+<Toaster position="top-right" reverseOrder={false} />
+
     <p className="text-sm font-bold text-gray-500 mb-4"> DASHBOARD </p> 
     <div className="min-h-screen bg-transparent" style={{ fontFamily: "Roboto, sans-serif" }}>
       <div className="space-y-4">
@@ -709,6 +765,7 @@ const reverseStatusData = [
                 </CardContent>
                 </Card>
             {/* ---------------- Approval Requests ---------------- */}
+
             <Card className="rounded-xl border border-blue-200 shadow-sm">
               <CardContent className="p-4">
                 {/* header */}
@@ -760,550 +817,555 @@ const reverseStatusData = [
                 </div>
   
                 {/* Tables for each filter */}
-                {/* Bidders */}
-                {approvalFilter === "bidders" && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse">
-                      <thead className="bg-blue-50">
-                        <tr>
-                          <th className="py-2 px-2 font-semibold text-left">Bidder Name</th>
-                          <th className="py-2 px-2 font-semibold text-center">Phone</th>
-                          <th className="py-2 px-2 font-semibold text-center">Email verified</th>
-                          <th className="py-2 px-2 font-semibold text-center">User type</th>
-                          <th className="py-2 px-2 font-semibold text-center">Identity proof</th>
-                          <th className="py-2 px-2 font-semibold text-center">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bidders.filter((b) => !b.isadminapproved).map((b, idx) => (
-                        <tr
-                        key={b.id ?? idx}
-                        className="border-b hover:bg-blue-50 cursor-pointer"
-                      >
-                        <td className="p-2 text-left">
-                          {/* Hover trigger wraps the whole cell, not just the name */}
-                          <HoverProfileCard id={b.id}>
-                            <div className="flex flex-col">
-                              <span className="text-blue-600 underline cursor-pointer">
-                                {`${b.fname || ""} ${b.lname || ""}`.trim()}
-                              </span>
-                              <i>
-                                <div className="text-gray-600">{b.email || "-"}</div>
-                                <div className="text-gray-600">{b.location || "-"}</div>
-                              </i>
-                            </div>
-                          </HoverProfileCard>
-                        </td>
-                      
-                        <td className="p-2 text-center">{b.phone || "-"}</td>
-                      
-                        <td className="p-2 text-center">
-                          <span
-                            className={
-                              b.verified ? "text-green-600" : "text-red-600 font-bold"
-                            }
-                          >
-                            {b.verified ? "Yes" : "No"}
-                          </span>
-                        </td>
-                      
-                        <td className="p-2 text-center">{b.type || "-"}</td>
-                      
-                        <td className="p-2 text-center">
-                          {b.identityproof ? (
-                            <a href={b.identityproof} target="_blank" rel="noreferrer">
-                              <FileText className="w-5 h-5 text-blue-600 hover:text-blue-800" />
-                            </a>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                      
-                        <td className="p-2 text-center">
-                          <Button
-                            size="sm"
-                            className="bg-green-100 text-green-700 text-xs mr-1"
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-red-100 text-red-700 text-xs"
-                          >
-                            Reject
-                          </Button>
-                        </td>
-                      </tr>
-                      
-                        ))}
-                        {bidders.filter((b) => !b.isadminapproved).length === 0 && (
-                          <tr><td colSpan={8} className="p-4 text-center text-gray-500">No bidders pending approval</td></tr>
+                        {/* Bidders */}
+                        {approvalFilter === "bidders" && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs border-collapse">
+                              <thead className="bg-blue-50">
+                                <tr>
+                                  <th className="py-2 px-2 font-semibold text-left">Bidder Name</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Phone</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Email verified</th>
+                                  <th className="py-2 px-2 font-semibold text-center">User type</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Identity proof</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {bidders.filter((b) => !b.isadminapproved).map((b, idx) => (
+                                <tr
+                                key={b.id ?? idx}
+                                className="border-b hover:bg-blue-50 cursor-pointer"
+                              >
+                                <td className="p-2 text-left">
+                                  {/* Hover trigger wraps the whole cell, not just the name */}
+                                  <HoverProfileCard id={b.id}>
+                                    <div className="flex flex-col">
+                                      <span className="text-blue-600 underline cursor-pointer">
+                                        {`${b.fname || ""} ${b.lname || ""}`.trim()}
+                                      </span>
+                                      <i>
+                                        <div className="text-gray-600">{b.email || "-"}</div>
+                                        <div className="text-gray-600">{b.location || "-"}</div>
+                                      </i>
+                                    </div>
+                                  </HoverProfileCard>
+                                </td>                      
+                                <td className="p-2 text-center">{b.phone || "-"}</td>
+                              
+                                <td className="p-2 text-center">
+                                  <span
+                                    className={
+                                      b.verified ? "text-green-600" : "text-red-600 font-bold"
+                                    }
+                                  >
+                                    {b.verified ? "Yes" : "No"}
+                                  </span>
+                                </td>
+                                <td className="p-2 text-center">{b.type || "-"}</td>     
+                                <td className="p-2 text-center">
+                                  {b.identityproof ? (
+                                    <a href={b.identityproof} target="_blank" rel="noreferrer">
+                                      <FileText className="w-5 h-5 text-blue-600 hover:text-blue-800" />
+                                    </a>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </td>
+                              
+                                <td className="p-2 text-center">
+                                    <Button
+                                      size="sm"
+                                      className="bg-green-100 text-green-700 text-xs mr-1"
+                                      onClick={() => handleApproveProfile(b.id)}
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      className="bg-red-100 text-red-700 text-xs"
+                                      onClick={() => handleRejectProfile(b.id)}
+                                    >
+                                      Reject
+                                    </Button>
+                                </td>
+                              </tr>
+                              
+                                ))}
+                                {bidders.filter((b) => !b.isadminapproved).length === 0 && (
+                                  <tr><td colSpan={8} className="p-4 text-center text-gray-500">No bidders pending approval</td></tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-   
-  {/* Suppliers */}
-{approvalFilter === "suppliers" && (
-  <div className="overflow-x-auto">
-    <table className="w-full text-xs border-collapse">
-      <thead className="bg-purple-50">
-        <tr>
-          <th className="py-2 px-2 font-semibold text-left">Supplier Name</th>
-          <th className="py-2 px-2 font-semibold text-center">Phone</th>
-          <th className="py-2 px-2 font-semibold text-center">Email verified</th>
-          <th className="py-2 px-2 font-semibold text-center">User type</th>
-          <th className="py-2 px-2 font-semibold text-center">Identity proof</th>
-          <th className="py-2 px-2 font-semibold text-center">Action</th>
-        </tr>
-      </thead>
+          
+                        {/* Suppliers */}
+                        {approvalFilter === "suppliers" && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs border-collapse">
+                              <thead className="bg-purple-50">
+                                <tr>
+                                  <th className="py-2 px-2 font-semibold text-left">Supplier Name</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Phone</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Email verified</th>
+                                  <th className="py-2 px-2 font-semibold text-center">User type</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Identity proof</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Action</th>
+                                </tr>
+                              </thead>
 
-      <tbody>
-        {sellers.filter((s) => !s.isadminapproved).map((s, idx) => (
-          <tr
-            key={s.id ?? idx}
-            className="border-b hover:bg-blue-50 cursor-pointer"
-          >
-            {/* Name + Email + Location cell identical to Bidders */}
-            <td className="p-2 text-left">
-              <HoverProfileCard id={s.id}>
-                <div className="flex flex-col">
-                  <span className="text-blue-600 underline cursor-pointer">
-                    {`${s.fname || ""} ${s.lname || ""}`.trim()}
-                  </span>
-                  <i>
-                    <div className="text-gray-600">{s.email || "-"}</div>
-                    <div className="text-gray-600">{s.location || "-"}</div>
-                  </i>
-                </div>
-              </HoverProfileCard>
-            </td>
+                              <tbody>
+                                {sellers.filter((s) => !s.isadminapproved).map((s, idx) => (
+                                  <tr
+                                    key={s.id ?? idx}
+                                    className="border-b hover:bg-blue-50 cursor-pointer"
+                                  >
+                                    {/* Name + Email + Location cell identical to Bidders */}
+                                    <td className="p-2 text-left">
+                                      <HoverProfileCard id={s.id}>
+                                        <div className="flex flex-col">
+                                          <span className="text-blue-600 underline cursor-pointer">
+                                            {`${s.fname || ""} ${s.lname || ""}`.trim()}
+                                          </span>
+                                          <i>
+                                            <div className="text-gray-600">{s.email || "-"}</div>
+                                            <div className="text-gray-600">{s.location || "-"}</div>
+                                          </i>
+                                        </div>
+                                      </HoverProfileCard>
+                                    </td>
 
-            {/* Phone */}
-            <td className="p-2 text-center">{s.phone || "-"}</td>
+                                    {/* Phone */}
+                                    <td className="p-2 text-center">{s.phone || "-"}</td>
 
-            {/* Email verified */}
-            <td className="p-2 text-center">
-              <span
-                className={
-                  s.verified ? "text-green-600" : "text-red-600 font-bold"
-                }
-              >
-                {s.verified ? "Yes" : "No"}
-              </span>
-            </td>
+                                    {/* Email verified */}
+                                    <td className="p-2 text-center">
+                                      <span
+                                        className={
+                                          s.verified ? "text-green-600" : "text-red-600 font-bold"
+                                        }
+                                      >
+                                        {s.verified ? "Yes" : "No"}
+                                      </span>
+                                    </td>
 
-            {/* User type */}
-            <td className="p-2 text-center">{s.type || "-"}</td>
+                                    {/* User type */}
+                                    <td className="p-2 text-center">{s.type || "-"}</td>
 
-            {/* Identity Proof */}
-            <td className="p-2 text-center">
-              {s.identityproof ? (
-                <a
-                  href={s.identityproof}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <FileText className="w-5 h-5 text-blue-600 hover:text-blue-800" />
-                </a>
-              ) : (
-                "-"
-              )}
-            </td>
+                                    {/* Identity Proof */}
+                                    <td className="p-2 text-center">
+                                      {s.identityproof ? (
+                                        <a
+                                          href={s.identityproof}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          <FileText className="w-5 h-5 text-blue-600 hover:text-blue-800" />
+                                        </a>
+                                      ) : (
+                                        "-"
+                                      )}
+                                    </td>
 
-            {/* Action buttons identical to Bidders */}
-            <td className="p-2 text-center">
-              <Button
-                size="sm"
-                className="bg-green-100 text-green-700 text-xs mr-1"
-              >
-                Approve
-              </Button>
-              <Button
-                size="sm"
-                className="bg-red-100 text-red-700 text-xs"
-              >
-                Reject
-              </Button>
-            </td>
-          </tr>
-        ))}
+                                    {/* Action buttons identical to Bidders */}
+                                    <td className="p-2 text-center">
+                                        <Button
+                                          size="sm"
+                                          className="bg-green-100 text-green-700 text-xs mr-1"
+                                          onClick={() => handleApproveProfile(s.id)}
+                                        >
+                                          Approve
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          className="bg-red-100 text-red-700 text-xs"
+                                          onClick={() => handleRejectProfile(s.id)}
+                                        >
+                                          Reject
+                                        </Button>
 
-        {sellers.filter((s) => !s.isadminapproved).length === 0 && (
-          <tr>
-            <td colSpan={8} className="p-4 text-center text-gray-500">
-              No suppliers pending approval
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-)}
+                                    </td>
+                                  </tr>
+                                ))}
 
-                {/* Auctions */}
-                {approvalFilter === "auctions" && (
-  <div className="overflow-x-auto">
-    <table className="w-full text-xs border-collapse">
-      <thead className="bg-green-50">
-        <tr>
-          <th className="py-2 px-2 font-semibold text-left">Auction</th>
-          <th className="py-2 px-2 font-semibold text-left">Created by</th>
-          <th className="py-2 px-2 font-semibold text-center">Type</th>
-          <th className="py-2 px-2 font-semibold text-center">Format</th>
-          <th className="py-2 px-2 font-semibold text-center">Start</th>
-          <th className="py-2 px-2 font-semibold text-center">End</th>
-          <th className="py-2 px-2 font-semibold text-center">Action</th>
-        </tr>
-      </thead>
+                                {sellers.filter((s) => !s.isadminapproved).length === 0 && (
+                                  <tr>
+                                    <td colSpan={8} className="p-4 text-center text-gray-500">
+                                      No suppliers pending approval
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
 
-      <tbody>
-        {auctions
-          .filter((a) => !a.approved && (a.sale_type === 1 || a.sale_type === 3))
-          .map((a, idx) => {
-            const creator = profilesMap.get(a.seller);
-            const creatorName = creator
-              ? `${creator.fname || ""} ${creator.lname || ""}`.trim()
-              : "-";
-            const start = a.scheduledstart
-              ? formatDateShort(a.scheduledstart)
-              : "-";
-            const endDate = calcEndDate(a.scheduledstart, a.auctionduration);
-            const end = endDate
-              ? formatDateShort(endDate.toISOString())
-              : "-";
+                        {/* Auctions */}
+                        {approvalFilter === "auctions" && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs border-collapse">
+                              <thead className="bg-green-50">
+                                <tr>
+                                  <th className="py-2 px-2 font-semibold text-left">Auction</th>
+                                  <th className="py-2 px-2 font-semibold text-left">Created by</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Type</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Format</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Start</th>
+                                  <th className="py-2 px-2 font-semibold text-center">End</th>
+                                  <th className="py-2 px-2 font-semibold text-center">Action</th>
+                                </tr>
+                              </thead>
 
-            // Determine type pill color
-            const type = (a.auctiontype || "-").toLowerCase();
-            let typeColor = "bg-gray-100 text-gray-700";
-            if (type === "forward")
-              typeColor = "bg-green-100 text-green-700";
-            else if (type === "reverse")
-              typeColor = "bg-blue-100 text-blue-700";
+                              <tbody>
+                                {auctions
+                                  .filter((a) => !a.approved && (a.sale_type === 1 || a.sale_type === 3))
+                                  .map((a, idx) => {
+                                    const creator = profilesMap.get(a.seller);
+                                    const creatorName = creator
+                                      ? `${creator.fname || ""} ${creator.lname || ""}`.trim()
+                                      : "-";
+                                    const start = a.scheduledstart
+                                      ? formatDateShort(a.scheduledstart)
+                                      : "-";
+                                    const endDate = calcEndDate(a.scheduledstart, a.auctionduration);
+                                    const end = endDate
+                                      ? formatDateShort(endDate.toISOString())
+                                      : "-";
 
-            return (
-              <tr
-                key={a.id ?? idx}
-                className="border-b hover:bg-blue-50 cursor-pointer"
-              >
-                {/* Auction name */}
-                <td className="p-2 text-left text-gray-800 font-medium">
-                  {a.productname || "-"}
-                </td>
+                                    // Determine type pill color
+                                    const type = (a.auctiontype || "-").toLowerCase();
+                                    let typeColor = "bg-gray-100 text-gray-700";
+                                    if (type === "forward")
+                                      typeColor = "bg-green-100 text-green-700";
+                                    else if (type === "reverse")
+                                      typeColor = "bg-blue-100 text-blue-700";
 
-                {/* Created By with HoverProfileCard */}
-                <td className="p-2 text-left">
-                  {creator ? (
-                    <HoverProfileCard id={creator.id}>
-                      <div className="flex flex-col">
-                        <span className="text-blue-600 underline cursor-pointer">
-                          {creatorName}
-                        </span>
-                        <i>
-                          <div className="text-gray-600">{creator.email || "-"}</div>
-                          <div className="text-gray-600">{creator.location || "-"}</div>
-                        </i>
-                      </div>
-                    </HoverProfileCard>
-                  ) : (
-                    <span className="text-gray-500">-</span>
-                  )}
-                </td>
+                                    return (
+                                      <tr
+                                        key={a.id ?? idx}
+                                        className="border-b hover:bg-blue-50 cursor-pointer"
+                                      >
+                                        {/* Auction name */}
+                                        <td className="p-2 text-left text-gray-800 font-medium">
+                                          {a.productname || "-"}
+                                        </td>
 
-                {/* Type with colored pill */}
-                <td className="p-2 text-center">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${typeColor}`}
-                  >
-                    {a.auctiontype
-                      ? a.auctiontype.charAt(0).toUpperCase() +
-                        a.auctiontype.slice(1)
-                      : "-"}
-                  </span>
-                </td>
+                                        {/* Created By with HoverProfileCard */}
+                                        <td className="p-2 text-left">
+                                          {creator ? (
+                                            <HoverProfileCard id={creator.id}>
+                                              <div className="flex flex-col">
+                                                <span className="text-blue-600 underline cursor-pointer">
+                                                  {creatorName}
+                                                </span>
+                                                <i>
+                                                  <div className="text-gray-600">{creator.email || "-"}</div>
+                                                  <div className="text-gray-600">{creator.location || "-"}</div>
+                                                </i>
+                                              </div>
+                                            </HoverProfileCard>
+                                          ) : (
+                                            <span className="text-gray-500">-</span>
+                                          )}
+                                        </td>
 
-                {/* Auction format */}
-                <td className="p-2 text-center text-gray-700">
-                  {a.auctionsubtype || "-"}
-                </td>
+                                        {/* Type with colored pill */}
+                                        <td className="p-2 text-center">
+                                          <span
+                                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${typeColor}`}
+                                          >
+                                            {a.auctiontype
+                                              ? a.auctiontype.charAt(0).toUpperCase() +
+                                                a.auctiontype.slice(1)
+                                              : "-"}
+                                          </span>
+                                        </td>
 
-                {/* Start */}
-                <td className="p-2 text-center text-gray-700">{start}</td>
+                                        {/* Auction format */}
+                                        <td className="p-2 text-center text-gray-700">
+                                          {a.auctionsubtype || "-"}
+                                        </td>
 
-                {/* End */}
-                <td className="p-2 text-center text-gray-700">{end}</td>
+                                        {/* Start */}
+                                        <td className="p-2 text-center text-gray-700">{start}</td>
 
-                {/* Actions */}
-                <td className="p-2 text-center">
-                  <Button
-                    size="sm"
-                    className="bg-green-100 text-green-700 text-xs mr-1"
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="bg-red-100 text-red-700 text-xs"
-                  >
-                    Reject
-                  </Button>
-                </td>
-              </tr>
-            );
-          })}
+                                        {/* End */}
+                                        <td className="p-2 text-center text-gray-700">{end}</td>
 
-        {auctions.filter((a) => !a.approved && (a.sale_type === 1 || a.sale_type === 3)).length === 0 && (
-          <tr>
-            <td colSpan={7} className="p-4 text-center text-gray-500">
-              No auctions pending approval
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-)}
+                                        {/* Actions */}
+                                        <td className="p-2 text-center">
+                                         <Button
+                                            size="sm"
+                                            className="bg-green-100 text-green-700 text-xs mr-1"
+                                            onClick={() => handleApproveAuction(a.id)}
+                                          >
+                                            Approve
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            className="bg-red-100 text-red-700 text-xs"
+                                            onClick={() => handleRejectAuction(a.id)}
+                                          >
+                                            Reject
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
 
-                {/* Buy Now */}
-                {approvalFilter === "buynow" && (
-  <div className="overflow-x-auto">
-    <table className="w-full text-xs border-collapse">
-      <thead className="bg-orange-50">
-        <tr>
-          <th className="py-2 px-2 font-semibold text-left">Supplier / Seller</th>
-          <th className="py-2 px-2 font-semibold text-left">Product name</th>
-          <th className="py-2 px-2 font-semibold text-center">Category</th>
-          <th className="py-2 px-2 font-semibold text-center">Sub-category</th>
-          <th className="py-2 px-2 font-semibold text-center">Sale price</th>
-          <th className="py-2 px-2 font-semibold text-center">Created on</th>
-          <th className="py-2 px-2 font-semibold text-center">Action</th>
-        </tr>
-      </thead>
+                                {auctions.filter((a) => !a.approved && (a.sale_type === 1 || a.sale_type === 3)).length === 0 && (
+                                  <tr>
+                                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                                      No auctions pending approval
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
 
-      <tbody>
-        {auctions
-          .filter((a) => !a.approved && a.sale_type === 2)
-          .map((p, idx) => {
-            const sup = profilesMap.get(p.seller);
-            const supplierName = sup
-              ? `${sup.fname || ""} ${sup.lname || ""}`.trim()
-              : "Unknown Supplier";
+                        {/* Buy Now */}
+                        {approvalFilter === "buynow" && (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs border-collapse">
+                                <thead className="bg-orange-50">
+                                  <tr>
+                                    <th className="py-2 px-2 font-semibold text-left">Supplier / Seller</th>
+                                    <th className="py-2 px-2 font-semibold text-left">Product name</th>
+                                    <th className="py-2 px-2 font-semibold text-center">Category</th>
+                                    <th className="py-2 px-2 font-semibold text-center">Sub-category</th>
+                                    <th className="py-2 px-2 font-semibold text-center">Sale price</th>
+                                    <th className="py-2 px-2 font-semibold text-center">Created on</th>
+                                    <th className="py-2 px-2 font-semibold text-center">Action</th>
+                                  </tr>
+                                </thead>
 
-            return (
-              <tr
-                key={p.id ?? idx}
-                className="border-b hover:bg-blue-50 cursor-pointer"
-              >
-                {/* Supplier Name with HoverProfileCard identical to Bidders */}
-                <td className="p-2 text-left">
-                  {sup ? (
-                    <HoverProfileCard id={sup.id}>
-                      <div className="flex flex-col">
-                        <span className="text-blue-600 underline cursor-pointer">
-                          {supplierName}
-                        </span>
-                        <i>
-                          <div className="text-gray-600">{sup.email || "-"}</div>
-                          <div className="text-gray-600">{sup.location || "-"}</div>
-                        </i>
-                      </div>
-                    </HoverProfileCard>
-                  ) : (
-                    <span className="text-gray-500">{supplierName}</span>
-                  )}
-                </td>
+                                <tbody>
+                                  {auctions
+                                    .filter((a) => !a.approved && a.sale_type === 2)
+                                    .map((p, idx) => {
+                                      const sup = profilesMap.get(p.seller);
+                                      const supplierName = sup
+                                        ? `${sup.fname || ""} ${sup.lname || ""}`.trim()
+                                        : "Unknown Supplier";
 
-                {/* Product name */}
-                <td className="p-2 text-gray-800 font-medium text-left">
-                  {p.productname || "-"}
-                </td>
+                                      return (
+                                        <tr
+                                          key={p.id ?? idx}
+                                          className="border-b hover:bg-blue-50 cursor-pointer"
+                                        >
+                                          {/* Supplier Name with HoverProfileCard identical to Bidders */}
+                                          <td className="p-2 text-left">
+                                            {sup ? (
+                                              <HoverProfileCard id={sup.id}>
+                                                <div className="flex flex-col">
+                                                  <span className="text-blue-600 underline cursor-pointer">
+                                                    {supplierName}
+                                                  </span>
+                                                  <i>
+                                                    <div className="text-gray-600">{sup.email || "-"}</div>
+                                                    <div className="text-gray-600">{sup.location || "-"}</div>
+                                                  </i>
+                                                </div>
+                                              </HoverProfileCard>
+                                            ) : (
+                                              <span className="text-gray-500">{supplierName}</span>
+                                            )}
+                                          </td>
 
-                {/* Category */}
-                <td className="p-2 text-center text-gray-700">
-                  {p.categoryid || "-"}
-                </td>
+                                          {/* Product name */}
+                                          <td className="p-2 text-gray-800 font-medium text-left">
+                                            {p.productname || "-"}
+                                          </td>
 
-                {/* Sub-category */}
-                <td className="p-2 text-center text-gray-700">
-                  {p.subcategoryid || "-"}
-                </td>
+                                          {/* Category */}
+                                          <td className="p-2 text-center text-gray-700">
+                                            {p.categoryid || "-"}
+                                          </td>
 
-                {/* Sale price */}
-                <td className="p-2 text-center text-gray-900 font-semibold">
-                  {p.currency || ""}{" "}
-                  {p.buy_now_price ? p.buy_now_price.toLocaleString() : "-"}
-                </td>
+                                          {/* Sub-category */}
+                                          <td className="p-2 text-center text-gray-700">
+                                            {p.subcategoryid || "-"}
+                                          </td>
 
-                {/* Created on */}
-                <td className="p-2 text-center text-gray-700">
-                  {formatDateShort(p.createdat)}
-                </td>
+                                          {/* Sale price */}
+                                          <td className="p-2 text-center text-gray-900 font-semibold">
+                                            {p.currency || ""}{" "}
+                                            {p.buy_now_price ? p.buy_now_price.toLocaleString() : "-"}
+                                          </td>
 
-                {/* Action buttons identical to Bidders */}
-                <td className="p-2 text-center">
-                  <Button
-                    size="sm"
-                    className="bg-green-100 text-green-700 text-xs mr-1"
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="bg-red-100 text-red-700 text-xs"
-                  >
-                    Reject
-                  </Button>
-                </td>
-              </tr>
-            );
-          })}
+                                          {/* Created on */}
+                                          <td className="p-2 text-center text-gray-700">
+                                            {formatDateShort(p.createdat)}
+                                          </td>
 
-        {auctions.filter((a) => !a.approved && a.sale_type === 2).length === 0 && (
-          <tr>
-            <td colSpan={7} className="p-4 text-center text-gray-500">
-              No Buy Now products pending approval
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-)}
-         
-              </CardContent>
-                </Card>
+                                          {/* Action buttons identical to Bidders */}
+                                          <td className="p-2 text-center">
+                                          <Button
+                                                size="sm"
+                                                className="bg-green-100 text-green-700 text-xs mr-1"
+                                                onClick={() => handleApproveAuction(p.id)}
+                                              >
+                                                Approve
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                className="bg-red-100 text-red-700 text-xs"
+                                                onClick={() => handleRejectAuction(p.id)}
+                                              >
+                                                Reject
+                                              </Button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+
+                                  {auctions.filter((a) => !a.approved && a.sale_type === 2).length === 0 && (
+                                    <tr>
+                                      <td colSpan={7} className="p-4 text-center text-gray-500">
+                                        No Buy Now products pending approval
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                        )}                               
+                </CardContent>  
+              </Card>
           </div>
   
           {/* RIGHT COLUMN - 25% WIDTH */}
           <div className="space-y-6">
             {/* ---------------- Revenue & Risk ---------------- */}
             <Card className="rounded-xl border border-blue-200 shadow-sm h-[400px]">
-  <CardContent className="p-4">
-    {/* Header */}
-    <div className="flex justify-between items-center mb-3">
-      <h3 className="text-base font-bold text-gray-900">Revenue & risk</h3>
-      <span className="text-xs text-gray-500">GMV trend & auction risk</span>
-    </div>
+              <CardContent className="p-4">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-base font-bold text-gray-900">Revenue & risk</h3>
+                  <span className="text-xs text-gray-500">GMV trend & auction risk</span>
+                </div>
 
-    {/* KPI Summary */}
-    <div className="grid grid-cols-3 gap-4 mb-4">
-      <div>
-        <p className="text-xs text-gray-500">Total GMV</p>
-        <p className="text-xs font-semibold text-gray-900">
-          ${revenueRisk?.gmv?.toLocaleString() || 0}
-        </p>
-      </div>
-      <div>
-        <p className="text-xs text-gray-500">Take rate</p>
-        <p className="text-xs font-semibold text-gray-900">
-          {revenueRisk?.takeRate
-            ? `${revenueRisk.takeRate.toFixed(2)}%`
-            : "0.00%"}
-        </p>
-      </div>
-      <div>
-        <p className="text-xs text-gray-500">At-risk auctions</p>
-        <p className="text-xs font-semibold text-gray-900">
-          {revenueRisk?.atRiskCount ?? 0}
-        </p>
-      </div>
-    </div>
+                {/* KPI Summary */}
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Total GMV</p>
+                    <p className="text-xs font-semibold text-gray-900">
+                      ${revenueRisk?.gmv?.toLocaleString() || 0}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Take rate</p>
+                    <p className="text-xs font-semibold text-gray-900">
+                      {revenueRisk?.takeRate
+                        ? `${revenueRisk.takeRate.toFixed(2)}%`
+                        : "0.00%"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">At-risk auctions</p>
+                    <p className="text-xs font-semibold text-gray-900">
+                      {revenueRisk?.atRiskCount ?? 0}
+                    </p>
+                  </div>
+                </div>
 
-    {/* Chart */}
-    <div className="w-full h-[220px]">
-    <ResponsiveContainer>
-  <ComposedChart
-    data={gmvTrend}
-    margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
-  >
-    <defs>
-      <linearGradient id="gmvActual" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="5%" stopColor="rgb(59,130,246)" stopOpacity={0.8} />
-        <stop offset="95%" stopColor="rgb(59,130,246)" stopOpacity={0.2} />
-      </linearGradient>
-      <linearGradient id="gmvProjected" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="5%" stopColor="rgb(147,197,253)" stopOpacity={0.6} />
-        <stop offset="95%" stopColor="rgb(191,219,254)" stopOpacity={0.1} />
-      </linearGradient>
-    </defs>
+                {/* Chart */}
+                <div className="w-full h-[220px]">
+                <ResponsiveContainer>
+              <ComposedChart
+                data={gmvTrend}
+                margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
+              >
+                <defs>
+                  <linearGradient id="gmvActual" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="rgb(59,130,246)" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="rgb(59,130,246)" stopOpacity={0.2} />
+                  </linearGradient>
+                  <linearGradient id="gmvProjected" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="rgb(147,197,253)" stopOpacity={0.6} />
+                    <stop offset="95%" stopColor="rgb(191,219,254)" stopOpacity={0.1} />
+                  </linearGradient>
+                </defs>
 
-    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-    <XAxis
-      dataKey="date"
-      tick={{ fontSize: 10, fill: "#6b7280" }}
-      axisLine={false}
-      tickLine={false}
-    />
-    <YAxis
-      tick={{ fontSize: 10, fill: "#6b7280" }}
-      axisLine={false}
-      tickLine={false}
-    />
-    <Tooltip
-      formatter={(value: number, name: string) => {
-        switch (name) {
-          case "gmv":
-            return [`$${value.toLocaleString()}`, "Actual GMV"];
-          case "projectedGmv":
-            return [`$${value.toLocaleString()}`, "Projected GMV"];
-          case "riskIndex":
-            return [`${value.toFixed(1)}%`, "Risk Index"];
-          default:
-            return value;
-        }
-      }}
-    />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: "#6b7280" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "#6b7280" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    switch (name) {
+                      case "gmv":
+                        return [`$${value.toLocaleString()}`, "Actual GMV"];
+                      case "projectedGmv":
+                        return [`$${value.toLocaleString()}`, "Projected GMV"];
+                      case "riskIndex":
+                        return [`${value.toFixed(1)}%`, "Risk Index"];
+                      default:
+                        return value;
+                    }
+                  }}
+                />
 
-    {/* Actual GMV (solid blue area) */}
-    <Area
-      type="monotone"
-      dataKey="gmv"
-      stroke="rgb(59,130,246)"
-      fill="url(#gmvActual)"
-      strokeWidth={2}
-      dot={false}
-      name="Actual GMV"
-    />
+                {/* Actual GMV (solid blue area) */}
+                <Area
+                  type="monotone"
+                  dataKey="gmv"
+                  stroke="rgb(59,130,246)"
+                  fill="url(#gmvActual)"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Actual GMV"
+                />
 
-    {/* Projected GMV (lighter dotted area) */}
-    <Area
-      type="monotone"
-      dataKey="projectedGmv"
-      stroke="rgb(147,197,253)"
-      fill="url(#gmvProjected)"
-      strokeWidth={1.5}
-      strokeDasharray="4 4"
-      dot={false}
-      name="Projected GMV"
-    />
+                {/* Projected GMV (lighter dotted area) */}
+                <Area
+                  type="monotone"
+                  dataKey="projectedGmv"
+                  stroke="rgb(147,197,253)"
+                  fill="url(#gmvProjected)"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  name="Projected GMV"
+                />
 
-    {/* Risk Trend Line (green dashed) */}
-    <Line
-      type="monotone"
-      dataKey="riskIndex"
-      stroke="rgb(34,197,94)"
-      strokeWidth={1.5}
-      dot={false}
-      strokeDasharray="3 3"
-      name="Risk Index"
-    />
-  </ComposedChart>
-</ResponsiveContainer>
+                {/* Risk Trend Line (green dashed) */}
+                <Line
+                  type="monotone"
+                  dataKey="riskIndex"
+                  stroke="rgb(34,197,94)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  strokeDasharray="3 3"
+                  name="Risk Index"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
 
-    </div>
+                </div>
 
-    {/* Footer */}
-    <div className="flex justify-end mt-3">
-      <a
-        href="/admin-panel/analytics/revenue-risk"
-        className="text-xs text-blue-600 hover:underline"
-      >
-        View detailed revenue analytics →
-      </a>
-    </div>
-  </CardContent>
-</Card>
+                {/* Footer */}
+                <div className="flex justify-end mt-3">
+                  <a
+                    href="/admin-panel/analytics/revenue-risk"
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    View detailed revenue analytics →
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
 
   
             {/* ---------------- Recent Winners ---------------- */}
