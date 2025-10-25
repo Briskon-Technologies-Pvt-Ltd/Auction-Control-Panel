@@ -19,6 +19,9 @@ import {
   Bell,
   FolderTree,
 } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import toast from "react-hot-toast";
+
 
 function SidebarItem({
   icon: Icon,
@@ -82,6 +85,54 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
+
+  interface Notification {
+    id: string;
+    message: string;
+    type?: string;
+    created_at: string;
+    read: boolean;
+  }
+  
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  
+  
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (!error && data) {
+        setNotifications(data);
+        setUnreadCount(data.filter((n) => !n.read).length);
+      }
+    };
+    fetchNotifications();
+  
+    // Real-time listener for new notifications
+    const channel = supabase
+      .channel("notifications-channel")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications" },
+        (payload) => {
+          const newNotif = payload.new;
+          toast.success(newNotif.message);
+          setNotifications((prev) => [newNotif, ...prev.slice(0, 9)]); // keep only 10
+          setUnreadCount((prev) => prev + 1);
+        }
+      )
+      .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  
 
   if (!user || user.role !== "admin") return null;
 
@@ -182,12 +233,70 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
               {/* Notifications + Profile */}
               <div className="relative flex items-center gap-6 ml-auto user-dropdown-container">
+                 
                 {/* 🔔 Notifications */}
                 <div className="relative flex items-center cursor-pointer group">
-                  <Bell className="w-6 h-6 text-gray-600 group-hover:text-blue-600 transition-colors" />
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-semibold px-1.5 rounded-full shadow-sm">
-                    17
-                  </span>
+                <Bell
+                  className="w-6 h-6 text-gray-600 group-hover:text-blue-600 transition-colors"
+                  onClick={async () => {
+                    const newState = !showNotifDropdown;
+                    setShowNotifDropdown(newState);
+
+                    // 🟢 When opening dropdown, mark all unread notifications as read
+                    if (!showNotifDropdown) {
+                      const { error } = await supabase
+                        .from("notifications")
+                        .update({ read: true })
+                        .eq("read", false);
+
+                      if (!error) {
+                        setUnreadCount(0);
+                        setNotifications((prev) =>
+                          prev.map((n) => ({ ...n, read: true }))
+                        );
+                        }
+                      }
+                    }}
+                  />
+
+
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-semibold px-1.5 rounded-full shadow-sm">
+                      {unreadCount}
+                    </span>
+                  )}
+
+                  {/* ▼ Notifications Dropdown */}
+                  {showNotifDropdown && (
+                    <div className="absolute right-0 top-8 w-72 bg-white border border-gray-200 rounded-xl shadow-lg z-50 animate-fade-in">
+                      <div className="p-2 border-b border-gray-100 font-semibold text-gray-700 text-sm">
+                        Notifications
+                      </div>
+
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-sm text-gray-500 text-center">
+                          No new notifications
+                        </div>
+                      ) : (
+                        <ul className="max-h-64 overflow-y-auto">
+                          {notifications.map((n) => (
+                              <li
+                              key={n.id}
+                              className={`px-3 py-2 text-xs border-b border-gray-50 cursor-pointer transition ${
+                                n.read ? "bg-white text-gray-600" : "bg-blue-50 text-gray-900 font-medium"
+                              } hover:bg-blue-100`}
+                            >
+                              {n.message}
+                              <div className="text-xs text-gray-400 mt-1">
+                                {new Date(n.created_at).toLocaleString()}
+                              </div>
+                            </li>
+                            
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 👤 Profile + Me */}
